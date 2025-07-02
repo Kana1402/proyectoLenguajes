@@ -9,7 +9,7 @@
 
     class Administrador{
         protected $container;
-        private const ROL= 5;
+        private const ROL= 1;
 
         public function __construct(ContainerInterface $c){
             $this->container = $c;
@@ -45,66 +45,63 @@
                 ->withStatus($status);
         }
 
-        public function create(Request $request, Response $response, $args){
-            
-            $body= json_decode($request->getBody());
+        public function create(Request $request, Response $response, $args)
+{
+    $body = json_decode($request->getBody());
 
-            $sql = "SELECT nuevoAdministrador(:idAdministrador,:nombre,:apellido1,:apellido2,:telefono,:celular,:direccion,:correo);";
+    // NOTA: Se recomienda refactorizar esto a un PROCEDIMIENTO con transacción,
+    // como hicimos con Oficinista y Tecnico, para mayor seguridad y consistencia.
+    $sql_admin = "SELECT nuevoAdministrador(:idAdministrador,:nombre,:apellido1,:apellido2,:telefono,:celular,:direccion,:correo);";
 
-            $con=  $this->container->get('base_datos');
-            $con->beginTransaction();
-            $query = $con->prepare($sql);
+    $con = $this->container->get('base_datos');
+    $con->beginTransaction();
 
-            
-            foreach($body as $key => $value){
-                $TIPO= gettype($value)=="integer" ? PDO::PARAM_INT : PDO::PARAM_STR;
-
-                $value=filter_var($value, FILTER_SANITIZE_SPECIAL_CHARS);
-
-                $query->bindValue($key, $value, $TIPO);
-            };
-
-            try{
-                $query->execute();
-                //$con->commit();
-                $res= $query->fetch(PDO::FETCH_NUM)[0];
-                $status= match($res) {
-                    0 => 201,
-                    1 => 409,
-                };
-              
-                $id = $body->idAdministrador;
-
-                $sql = "SELECT nuevoUsuario(:idUsuario, :rol, :passw);";
-
-                //Hash a la contraseña
-                $passw= $id;
-
-                $query = $con->prepare($sql);
-                $query->bindValue(':idUsuario', $id, PDO::PARAM_STR);
-                $query->bindValue(':rol', self::ROL, PDO::PARAM_INT);
-                $query->bindValue(':passw', $passw, PDO::PARAM_STR);   
-
-                $query->execute();
-
-                if($status==409){
-                    $con->rollBack();
-                }else{
-                    $con->commit();
-                }
-                $res= $query->fetch(PDO::FETCH_NUM)[0];
-                
-            } catch(PDOException $e){
-                $status= 500;
-                $con->rollBack();
-            }
-
-            $query=null;
-            $con=null;
-
-
-            return $response ->withStatus($status);
+    try {
+        // --- Parte 1: Crear el Administrador ---
+        $query_admin = $con->prepare($sql_admin);
+        foreach ($body as $key => $value) {
+            $query_admin->bindValue($key, $value);
         }
+        $query_admin->execute();
+
+        $res = $query_admin->fetch(PDO::FETCH_NUM)[0];
+        $status = ($res == 0) ? 201 : 409;
+
+        // Si el administrador se creó bien (o ya existía y queremos continuar)
+        if ($status == 201) {
+            // --- Parte 2: Crear el Usuario ---
+
+            // CORREGIDO: Se añade el parámetro :correo a la llamada
+            $sql_user = "SELECT nuevoUsuario(:idUsuario, :correo, :rol, :passw);";
+            $query_user = $con->prepare($sql_user);
+
+            $id = $body->idAdministrador;
+            $correo = $body->correo; // Se obtiene el correo del body
+            $passw = password_hash($id, PASSWORD_DEFAULT); // Se hashea la contraseña
+
+            $query_user->bindValue(':idUsuario', $id);
+            $query_user->bindValue(':correo', $correo); // CORREGIDO: Se bindea el correo
+            $query_user->bindValue(':rol', self::ROL, PDO::PARAM_INT);
+            $query_user->bindValue(':passw', $passw);
+
+            $query_user->execute();
+        }
+
+        // Si algo salió mal antes (ej: admin duplicado), revertir.
+        if ($status == 409) {
+            $con->rollBack();
+        } else {
+            $con->commit();
+        }
+
+    } catch (PDOException $e) {
+        $status = 500;
+        $con->rollBack();
+    }
+
+    $con = null;
+    return $response->withStatus($status);
+}
 
         public function update(Request $request, Response $response, $args) {
 
