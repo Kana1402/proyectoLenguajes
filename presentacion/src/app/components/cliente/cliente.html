@@ -5,8 +5,7 @@
         </mat-card-header>
 
         <mat-card-content class="relative overflow-x-auto shadow-md sm:rounded-lg">
-            <mat-expansion-panel (opened)="panelOpenState.set(true)"
-            (closed)="panelOpenState.set(false); limpiar();">
+            <mat-expansion-panel (opened)="panelOpenState.set(true)" (closed)="panelOpenState.set(false); limpiar();">
                 <mat-expansion-panel-header>
                     <mat-panel-title>
                         Filtrar - Click para {{panelOpenState() ? 'cerrar' : 'abrir'}}
@@ -14,8 +13,7 @@
                 </mat-expansion-panel-header>
                 <mat-form-field>
                     <mat-label>ID Cliente</mat-label>
-                    <input matInput #fidUsuario id="fidUsuario"
-                    (keyup)="onFiltroChange({
+                    <input matInput #fidUsuario id="fidUsuario" (keyup)="onFiltroChange({
                         idUsuario : fidUsuario.value,
                         nombre : fnombre.value,
                         apellido1 : fapellido1.value,
@@ -24,8 +22,7 @@
                 </mat-form-field>
                 <mat-form-field>
                     <mat-label>Nombre</mat-label>
-                    <input matInput #fnombre id="fnombre"
-                    (keyup)="onFiltroChange({
+                    <input matInput #fnombre id="fnombre" (keyup)="onFiltroChange({
                         idUsuario : fidUsuario.value,
                         nombre : fnombre.value,
                         apellido1 : fapellido1.value,
@@ -35,8 +32,7 @@
                 </mat-form-field>
                 <mat-form-field>
                     <mat-label>Primer Apellido</mat-label>
-                    <input matInput #fapellido1 id="fapellido1"
-                    (keyup)="onFiltroChange({
+                    <input matInput #fapellido1 id="fapellido1" (keyup)="onFiltroChange({
                         idUsuario : fidUsuario.value,
                         nombre : fnombre.value,
                         apellido1 : fapellido1.value,
@@ -46,8 +42,7 @@
                 </mat-form-field>
                 <mat-form-field>
                     <mat-label>Segundo Apellido</mat-label>
-                    <input matInput #fapellido2 id="apellido2"
-                    (keyup)="onFiltroChange({
+                    <input matInput #fapellido2 id="apellido2" (keyup)="onFiltroChange({
                         idUsuario : fidUsuario.value,
                         nombre : fnombre.value,
                         apellido1 : fapellido1.value,
@@ -59,7 +54,7 @@
             <!--table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400"-->
             <table mat-table class="md-flex flex-col " [dataSource]="dataSource()">
                 <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                    <ng-container matColumnDef="idCliente" >
+                    <ng-container matColumnDef="idCliente">
                         <th mat-header-cell *matHeaderCellDef>ID Cliente</th>
                         <td mat-cell *matCellDef="let element">{{element.idCliente}}</td>
                     </ng-container>
@@ -80,7 +75,7 @@
                         <td mat-cell *matCellDef="let element">{{element.celular}}</td>
                     </ng-container>
                     <ng-container matColumnDef="correo">
-                        <th mat-header-cell *matHeaderCellDef >Correo</th>
+                        <th mat-header-cell *matHeaderCellDef>Correo</th>
                         <td mat-cell *matCellDef="let element">{{element.correo}}</td>
                     </ng-container>
                     <ng-container matColumnDef="botonera" class="flex justify-center">
@@ -104,6 +99,8 @@
                                     <mat-icon>edit</mat-icon>
                                 </button>
 
+
+                                @if (srvAuth.userActualS().rol === 1) {
                                 <button mat-icon-button (click)="onEliminar(element.id)"
                                     class="flex content-center items-center focus:outline-none text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:ring-red-300 font-medium rounded-lg text-sm px-3 py-1 mx-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-900">
                                     <mat-icon>delete</mat-icon>
@@ -113,52 +110,13 @@
                                     class="flex content-center items-center focus:outline-none text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:ring-green-300 font-medium rounded-lg text-sm px-3 py-1 mx-2 dark:bg-green-600 dark:hover:bg-green-700 dark:focus:ring-green-800">
                                     <mat-icon>key</mat-icon>
                                 </button>
+                                }
                             </div>
                         </td>
                     </ng-container>
                 </thead>
                 <tr mat-header-row *matHeaderRowDef="columnas"></tr>
                 <tr mat-row *matRowDef="let row; columns: columnas"></tr>
-                <!--tbody>
-            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600">
-                <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                    Apple MacBook Pro 17"
-                </th>
-                <td class="px-6 py-4">
-                    Silver
-                </td>
-                <td class="px-6 py-4">
-                    Laptop
-                </td>
-                <td class="px-6 py-4">
-                    $2999
-                </td>
-                <td class="px-6 py-4">
-                    Silver
-                </td>
-                <td class="px-6 py-4">
-                    Laptop
-                </td>
-                <td class="px-6 py-4">
-                    $2999
-                </td>
-                <td class="px-6 py-4">
-                    $2999
-                </td>
-                <td class="px-6 py-4 text-right">
-                    <a href="#" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Info</a>
-                </td>
-                <td class="px-6 py-4 text-right">
-                    <a href="#" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
-                </td>
-                <td class="px-6 py-4 text-right">
-                    <a href="#" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Del</a>
-                </td>
-                <td class="px-6 py-4 text-right">
-                    <a href="#" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Reset</a>
-                </td>
-            </tr>
-            </tbody-->
             </table>
         </mat-card-content>
 
