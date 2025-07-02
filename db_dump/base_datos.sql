@@ -100,8 +100,6 @@ CREATE TABLE administrador (
   UNIQUE KEY idx_CorreoAdministrador (correo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 
-<<<<<<< HEAD
-=======
 CREATE TABLE oficinista (
     id INT PRIMARY KEY AUTO_INCREMENT,
     idOficinista VARCHAR(15),
@@ -125,6 +123,5 @@ CREATE TABLE tecnico (
     direccion VARCHAR(255),
     correo VARCHAR(100)
 );
->>>>>>> a4d2a354babeb262dfd515e31bc60c1030493409
 
 COMMIT;

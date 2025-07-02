@@ -52,7 +52,7 @@
             $endpoint->patch('/refresh', Auth::class . ':refrescar');
         });
         
-|       $api->group('/caso',function(RouteCollectorProxy $endpoint){
+        $api->group('/caso',function(RouteCollectorProxy $endpoint){
             $endpoint->get('/read[/{id}]', Caso::class . ':read');
             $endpoint->post('', Caso::class . ':create');
             $endpoint->put('/{id}', Caso::class . ':update');
@@ -76,5 +76,4 @@
             $endpoint->put('/{id}', Tecnico::class . ':update');
             $endpoint->delete('/{id}', Tecnico::class . ':delete');
             $endpoint->get('/filtrar/{pag}/{lim}', Tecnico::class . ':filtrar');
-        });
-});
+        }
