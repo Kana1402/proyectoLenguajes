@@ -76,4 +76,5 @@
             $endpoint->put('/{id}', Tecnico::class . ':update');
             $endpoint->delete('/{id}', Tecnico::class . ':delete');
             $endpoint->get('/filtrar/{pag}/{lim}', Tecnico::class . ':filtrar');
-        }
+        });
+    });

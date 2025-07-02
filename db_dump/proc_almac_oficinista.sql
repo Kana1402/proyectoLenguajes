@@ -147,16 +147,30 @@ END$$
 -- Este procedimiento ya estaba bien implementado.
 -- =================================================================
 DROP PROCEDURE IF EXISTS filtrarOficinistas$$
-CREATE PROCEDURE filtrarOficinistas(IN p_filtro VARCHAR(255), IN p_pagina INT, IN p_limite INT)
+CREATE PROCEDURE filtrarOficinistas(
+    IN p_filtro VARCHAR(255), 
+    IN p_pagina INT, 
+    IN p_limite INT
+)
 BEGIN
-    SET @offset = (p_pagina - 1) * p_limite;
-    SET @filtro_like = CONCAT('%', REPLACE(p_filtro, '%&%', '%'), '%');
-    
-    -- Usar la vista es más limpio
-    SET @sql = 'SELECT * FROM vista_oficinistas WHERE CONCAT_WS(" ", idOficinista, nombre, apellido1, correo) LIKE ? LIMIT ?, ?';
-    
+    DECLARE v_offset INT;
+    DECLARE v_filtro_like VARCHAR(255);
+
+    SET v_offset = (p_pagina - 1) * p_limite;
+    SET v_filtro_like = CONCAT('%', REPLACE(p_filtro, '%&%', '%'), '%');
+
+    SET @sql = '
+        SELECT * 
+        FROM vista_oficinistas 
+        WHERE CONCAT_WS(" ", idOficinista, nombre, apellido1, correo) LIKE ? 
+        LIMIT ?, ?
+    ';
+
     PREPARE stmt FROM @sql;
-    EXECUTE stmt USING @filtro_like, @offset, p_limite;
+    EXECUTE stmt USING 
+        CAST(v_filtro_like AS CHAR), 
+        CAST(v_offset AS SIGNED), 
+        CAST(p_limite AS SIGNED);
     DEALLOCATE PREPARE stmt;
 END$$
 

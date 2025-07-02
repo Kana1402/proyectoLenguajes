@@ -1,11 +1,8 @@
 USE taller;
 DELIMITER $$
 
--- =================================================================
--- VISTA PARA LEER DATOS DE TÉCNICOS
--- =================================================================
 CREATE OR REPLACE VIEW vista_tecnicos AS
-SELECT 
+SELECT
     t.id,
     t.idTecnico,
     t.nombre,
@@ -14,15 +11,12 @@ SELECT
     t.telefono,
     t.celular,
     t.direccion,
-    u.correo, -- Correo usado para el login
+    u.correo,
     u.rol
 FROM tecnico t
 JOIN usuario u ON t.idTecnico = u.idUsuario;
 $$
 
--- =================================================================
--- PROCEDIMIENTO PARA CREAR UN NUEVO TÉCNICO
--- =================================================================
 DROP PROCEDURE IF EXISTS nuevoTecnico$$
 CREATE PROCEDURE nuevoTecnico (
     _idTecnico VARCHAR(15),
@@ -43,25 +37,16 @@ BEGIN
     END;
 
     START TRANSACTION;
-    
-    INSERT INTO usuario(idUsuario, correo, rol, passw) 
-    VALUES (_idTecnico, _correo, 3, _passw);
-    
-    INSERT INTO tecnico(idTecnico, nombre, apellido1, apellido2, telefono, celular, direccion, correo) 
-    VALUES (_idTecnico, _nombre, _apellido1, _apellido2, _telefono, _celular, _direccion, _correo);
-    
+    INSERT INTO usuario(idUsuario, correo, rol, passw) VALUES (_idTecnico, _correo, 3, _passw);
+    INSERT INTO tecnico(idTecnico, nombre, apellido1, apellido2, telefono, celular, direccion, correo) VALUES (_idTecnico, _nombre, _apellido1, _apellido2, _telefono, _celular, _direccion, _correo);
     COMMIT;
     SELECT 'Técnico creado con éxito.' AS Resultado;
 END$$
 
--- =================================================================
--- PROCEDIMIENTO PARA ELIMINAR UN TÉCNICO
--- =================================================================
 DROP PROCEDURE IF EXISTS eliminarTecnico$$
 CREATE PROCEDURE eliminarTecnico (_id_tecnico INT)
 BEGIN
     DECLARE _idUsuarioABorrar VARCHAR(15);
-
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
@@ -69,9 +54,7 @@ BEGIN
     END;
 
     START TRANSACTION;
-
     SELECT idTecnico INTO _idUsuarioABorrar FROM tecnico WHERE id = _id_tecnico;
-    
     IF _idUsuarioABorrar IS NOT NULL THEN
         DELETE FROM tecnico WHERE id = _id_tecnico;
         DELETE FROM usuario WHERE idUsuario = _idUsuarioABorrar;
@@ -83,9 +66,6 @@ BEGIN
     END IF;
 END$$
 
--- =================================================================
--- PROCEDIMIENTO PARA EDITAR UN TÉCNICO
--- =================================================================
 DROP PROCEDURE IF EXISTS editarTecnico$$
 CREATE PROCEDURE editarTecnico (
     _id INT,
@@ -106,39 +86,33 @@ BEGIN
     END;
 
     START TRANSACTION;
-
-    UPDATE tecnico SET
-        idTecnico = _idTecnico,
-        nombre = _nombre,
-        apellido1 = _apellido1,
-        apellido2 = _apellido2,
-        telefono = _telefono,
-        celular = _celular,
-        direccion = _direccion,
-        correo = _correo
-    WHERE id = _id;
-    
-    UPDATE usuario SET
-        correo = _correo
-    WHERE idUsuario = _idTecnico;
-
+    UPDATE tecnico SET idTecnico = _idTecnico, nombre = _nombre, apellido1 = _apellido1, apellido2 = _apellido2, telefono = _telefono, celular = _celular, direccion = _direccion, correo = _correo WHERE id = _id;
+    UPDATE usuario SET correo = _correo WHERE idUsuario = _idTecnico;
     COMMIT;
     SELECT 'Técnico actualizado con éxito.' AS Resultado;
 END$$
 
--- =================================================================
--- PROCEDIMIENTO PARA FILTRAR TÉCNICOS
--- =================================================================
 DROP PROCEDURE IF EXISTS filtrarTecnicos$$
-CREATE PROCEDURE filtrarTecnicos(IN p_filtro VARCHAR(255), IN p_pagina INT, IN p_limite INT)
+CREATE PROCEDURE filtrarTecnicos (
+    IN _parametros VARCHAR(250),  -- %idTecnico%&%nombre%&%apellido1%&%correo%&
+    IN _pagina SMALLINT UNSIGNED, 
+    IN _cantRegs SMALLINT UNSIGNED
+)
 BEGIN
-    SET @offset = (p_pagina - 1) * p_limite;
-    SET @filtro_like = CONCAT('%', REPLACE(p_filtro, '%&%', '%'), '%');
-    
-    SET @sql = 'SELECT * FROM vista_tecnicos WHERE CONCAT_WS(" ", idTecnico, nombre, apellido1, correo) LIKE ? LIMIT ?, ?';
-    
+    DECLARE _filtro TEXT;
+
+    -- Generar cláusula WHERE usando cadenaFiltro
+    SELECT cadenaFiltro(_parametros, 'idTecnico&nombre&apellido1&correo&') INTO _filtro;
+
+    -- Armar SQL dinámico
+    SET @sql = CONCAT(
+        'SELECT * FROM vista_tecnicos WHERE ', _filtro,
+        ' LIMIT ', _pagina, ', ', _cantRegs
+    );
+
+    -- Ejecutar SQL dinámico
     PREPARE stmt FROM @sql;
-    EXECUTE stmt USING @filtro_like, @offset, p_limite;
+    EXECUTE stmt;
     DEALLOCATE PREPARE stmt;
 END$$
 
