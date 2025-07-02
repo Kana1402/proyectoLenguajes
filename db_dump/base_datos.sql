@@ -123,5 +123,4 @@ CREATE TABLE tecnico (
     direccion VARCHAR(255),
     correo VARCHAR(100)
 );
-
 COMMIT;
