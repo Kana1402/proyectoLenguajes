@@ -9,59 +9,56 @@ import { MatDialog } from '@angular/material/dialog';
 import { FrmCliente } from '../forms/frm-cliente/frm-cliente';
 import { DialogoGeneral } from '../forms/dialogo-general/dialogo-general';
 import { UsuarioService } from '../../shared/services/usuario-service';
-import { MatExpansionModule } from '@angular/material/expansion'
-import { MatPaginator, MatPaginatorModule} from '@angular/material/paginator'
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { RouterModule } from '@angular/router';
 import { PrintService } from '../../shared/services/print-service';
-
+import { AuthService } from '../../shared/services/auth-service';
 
 @Component({
   selector: 'app-cliente',
-  imports: [MatCardModule, MatTableModule, MatIconModule, MatExpansionModule, MatPaginatorModule, MatFormFieldModule , MatInputModule, MatButtonModule, RouterModule],
+  imports: [MatCardModule, MatTableModule, MatIconModule, MatExpansionModule, MatPaginatorModule, MatFormFieldModule, MatInputModule, MatButtonModule, RouterModule],
   templateUrl: './cliente.html',
-  styleUrl: './cliente.css'
+  styleUrls: ['./cliente.css'] // ✅ Corregido: styleUrls en plural
 })
 export class Cliente implements AfterViewInit {
   private readonly clienteSrv = inject(ClienteService);
   private readonly usuarioSrv = inject(UsuarioService);
   private readonly dialogo = inject(MatDialog);
   private readonly printSrv = inject(PrintService);
+  public readonly srvAuth = inject(AuthService);
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   panelOpenState = signal(false);
   columnas: string[] = ['idCliente', 'nombre', 'apellido1', 'apellido2', 'celular', 'correo', 'botonera'];
-  //datos : any;
   dataSource = signal(new MatTableDataSource<TipoCliente>());
   filtro: any;
 
   mostrarDialogo(titulo: string, datos?: TipoCliente) {
-    const dialogoRef = this.dialogo.open(FrmCliente,
-      {
-        width: '50vw',
-        maxWidth: '35rem',
-        data: {
-          title: titulo,
-          datos: datos
-        },
-        disableClose: true
-      }
-    );
-    dialogoRef.afterClosed()
-      .subscribe({
-        next: (res) => {
-          if (res != false) {
-            this.resetearFiltro();
-          }
-        },
+    const dialogoRef = this.dialogo.open(FrmCliente, {
+      width: '50vw',
+      maxWidth: '35rem',
+      data: {
+        title: titulo,
+        datos: datos
+      },
+      disableClose: true
+    });
 
-      })
+    dialogoRef.afterClosed().subscribe({
+      next: (res) => {
+        if (res !== false) {
+          this.resetearFiltro();
+        }
+      }
+    });
   }
 
   resetearFiltro() {
-    this.filtro = { idCliente: '', nombre: '', apellido1: '', apellido2: '' }
+    this.filtro = { idCliente: '', nombre: '', apellido1: '', apellido2: '' };
     this.filtrar();
   }
 
@@ -69,13 +66,14 @@ export class Cliente implements AfterViewInit {
     this.clienteSrv.filtrar(this.filtro).subscribe({
       next: (data) => {
         console.log(data);
-        this.dataSource.set(data);
+        this.dataSource().data = data;
+        this.dataSource().paginator = this.paginator; // ✅ Conectar paginator
       },
       error: (err) => console.error(err)
     });
   }
 
-  limpiar(){
+  limpiar() {
     this.resetearFiltro();
     (document.querySelector('#fidUsuario') as HTMLInputElement).value = '';
     (document.querySelector('#fnombre') as HTMLInputElement).value = '';
@@ -88,97 +86,100 @@ export class Cliente implements AfterViewInit {
   }
 
   onEditar(id: number) {
-    this.clienteSrv.buscar(id)
-      .subscribe({
-        next: (data) => {
-          this.mostrarDialogo('Editar Cliente', data);
-        }
-      })
+    this.clienteSrv.buscar(id).subscribe({
+      next: (data) => {
+        this.mostrarDialogo('Editar Cliente', data);
+      }
+    });
   }
+
   onEliminar(id: number) {
     const dialogoRef = this.dialogo.open(DialogoGeneral, {
       data: {
-        texto: `¿Está seguro de eliminar el cliente con id ${id}?`,
+        texto: `¿Está seguro de eliminar el cliente con id ${id}?`, // ✅ Corregido con backticks
         icono: 'question_mark',
         textoAceptar: 'Sí',
         textoCancelar: 'No',
       }
     });
+
     dialogoRef.afterClosed().subscribe(result => {
       if (result === true) {
-        this.clienteSrv.eliminar(id)
-          .subscribe((res: any) => {
-            this.dialogo.open(DialogoGeneral, {
-              data: {
-                texto: `Cliente con id ${id} eliminado correctamente`,
-                icono: 'check',
-                textoAceptar: 'Aceptar'
-              },
-            });
-            this.resetearFiltro();
-          })
+        this.clienteSrv.eliminar(id).subscribe(() => {
+          this.dialogo.open(DialogoGeneral, {
+            data: {
+              texto: `Cliente con id ${id} eliminado correctamente`, // ✅ Corregido
+              icono: 'check',
+              textoAceptar: 'Aceptar'
+            },
+          });
+          this.resetearFiltro();
+        });
       }
     });
   }
-  onInfo(id: number) {
 
+  onInfo(id: number) {
+    // Implementar si se necesita
   }
 
-  onFiltroChange(f : any){
+  onFiltroChange(f: any) {
     this.filtro = f;
     this.filtrar();
   }
 
-  onResetearPassw(id: number){
+  onResetearPassw(id: number) {
     this.clienteSrv.buscar(id).subscribe({
       next: (data) => {
         const dialogoRef = this.dialogo.open(DialogoGeneral, {
-      data: {
-        texto: `¿Desea resetear la contraseña de ${data.nombre}?`,
-        icono: 'question_mark',
-        textoAceptar: 'Sí',
-        textoCancelar: 'No',
-      }
-    });
-    dialogoRef.afterClosed().subscribe(result => {
-      if (result === true) {
-        this.usuarioSrv.resetearPassw(data.idCliente).subscribe(() => {
-            this.dialogo.open(DialogoGeneral, {
-              data: {
-                texto: `Contraseña restablecida`,
-                icono: 'check',
-                textoAceptar: 'Aceptar'
-              }
+          data: {
+            texto: `¿Desea resetear la contraseña de ${data.nombre}?`, // ✅ Corregido
+            icono: 'question_mark',
+            textoAceptar: 'Sí',
+            textoCancelar: 'No',
+          }
+        });
+
+        dialogoRef.afterClosed().subscribe(result => {
+          if (result === true) {
+            this.usuarioSrv.resetearPassw(data.idCliente).subscribe(() => {
+              this.dialogo.open(DialogoGeneral, {
+                data: {
+                  texto: 'Contraseña restablecida',
+                  icono: 'check',
+                  textoAceptar: 'Aceptar'
+                }
+              });
             });
-          });
-        }
-      });
+          }
+        });
       }
     });
   }
 
-  onImprimir(){
+  onImprimir() {
     const encabezado = ['ID Cliente', 'Nombre', 'Teléfono', 'Celular', 'Correo'];
-    this.clienteSrv.filtrar(this.filtro)
-      .subscribe({
-        next: (data) => {
-          const cuerpo = Object(data).map((Obj: any) => {
-            const datos = [
-              Obj.idCliente,
-              `${Obj.nombre} ${Obj.apellido1} ${Obj.apellido2}`,
-              Obj.telefono,
-              Obj.celular,
-              Obj.correo,
-            ];
-            return datos;
-          });
-          this.printSrv.print(encabezado, cuerpo, 'Listado de CLientes', true)
-        }
-      });
+
+    this.clienteSrv.filtrar(this.filtro).subscribe({
+      next: (data) => {
+        const cuerpo = Object(data).map((Obj: any) => {
+          const datos = [
+            Obj.idCliente,
+            `${Obj.nombre} ${Obj.apellido1} ${Obj.apellido2}`, // ✅ Corregido
+            Obj.telefono,
+            Obj.celular,
+            Obj.correo,
+          ];
+          return datos;
+        });
+
+        this.printSrv.print(encabezado, cuerpo, 'Listado de Clientes', true);
+      }
+    });
   }
 
   ngAfterViewInit(): void {
-    this.filtro = { idCliente: '', nombre: '', apellido1: '', apellido2: '' }
+    this.filtro = { idCliente: '', nombre: '', apellido1: '', apellido2: '' };
     this.filtrar();
   }
 }
