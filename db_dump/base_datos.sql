@@ -100,5 +100,31 @@ CREATE TABLE administrador (
   UNIQUE KEY idx_CorreoAdministrador (correo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 
+<<<<<<< HEAD
+=======
+CREATE TABLE oficinista (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    idOficinista VARCHAR(15),
+    nombre VARCHAR(30),
+    apellido1 VARCHAR(15),
+    apellido2 VARCHAR(15),
+    telefono VARCHAR(9),
+    celular VARCHAR(9),
+    direccion VARCHAR(255),
+    correo VARCHAR(100)
+);
+
+CREATE TABLE tecnico (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    idTecnico VARCHAR(15),
+    nombre VARCHAR(30),
+    apellido1 VARCHAR(15),
+    apellido2 VARCHAR(15),
+    telefono VARCHAR(9),
+    celular VARCHAR(9),
+    direccion VARCHAR(255),
+    correo VARCHAR(100)
+);
+>>>>>>> a4d2a354babeb262dfd515e31bc60c1030493409
 
 COMMIT;
