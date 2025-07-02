@@ -46,17 +46,16 @@ class Oficinista {
     /**
      * Crea un nuevo oficinista y su usuario asociado (Lógica corregida).
      */
-    public function create(Request $request, Response $response, $args){
+     public function create(Request $request, Response $response, $args){
         $body = json_decode($request->getBody());
 
-        // CORREGIDO: Se llama al nuevo procedimiento que maneja todo.
         $sql = "CALL nuevoOficinista(:idOficinista, :nombre, :apellido1, :apellido2, :telefono, :celular, :direccion, :correo, :passw);";
         
         try {
             $con = $this->container->get('base_datos');
             $query = $con->prepare($sql);
 
-            $passw = $body->idOficinista; // Contraseña inicial es la cédula
+            $passw = $body->idOficinista;
 
             $query->bindValue(':idOficinista', $body->idOficinista);
             $query->bindValue(':nombre', $body->nombre);
@@ -66,16 +65,16 @@ class Oficinista {
             $query->bindValue(':celular', $body->celular);
             $query->bindValue(':direccion', $body->direccion);
             $query->bindValue(':correo', $body->correo);
-            $query->bindValue(':passw', password_hash($passw, PASSWORD_DEFAULT)); // Se hashea la contraseña
+            $query->bindValue(':passw', password_hash($passw, PASSWORD_DEFAULT));
 
             $query->execute();
-            // El SP ahora devuelve un mensaje, no es necesario leer un resultado numérico.
-            $status = 201; // Creado con éxito
+            
+            // Si no hay excepción, asumimos que fue exitoso.
+            $status = 201;
 
         } catch(PDOException $e) {
-            // Si el SP falla (ej: ID duplicado), capturamos la excepción.
+            // Cualquier error en la base de datos (ej: ID duplicado) resultará en 500.
             $status = 500;
-            // Opcional: puedes registrar el error $e->getMessage()
         }
 
         $query = null;

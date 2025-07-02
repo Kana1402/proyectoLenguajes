@@ -2,7 +2,6 @@
 POST http://localhost:8000/api/cliente
 Content-Type: application/json
 
-{
  {
   "idCliente": "11",
   "nombre": "Christopher",
@@ -13,4 +12,19 @@ Content-Type: application/json
   "direccion": "Limon",
   "correo": "chrisls@gmail.com"
 }
+
+### Crear nuevo técnico
+POST http://localhost:8000/api/tecnicos
+Content-Type: application/json
+
+{
+  "idTecnico": "TEC100",
+  "nombre": "Andrea",
+  "apellido1": "Chaves",
+  "apellido2": "Morales",
+  "telefono": "22556688",
+  "celular": "88886655",
+  "direccion": "Cartago",
+  "correo": "andrea@correo.com",
+  "passw": "123456"
 }

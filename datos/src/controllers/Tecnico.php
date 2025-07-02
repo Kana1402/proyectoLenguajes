@@ -43,13 +43,13 @@ class Tecnico {
     }
 
     /**
-     * Crea un nuevo técnico y su usuario asociado (Lógica corregida).
+     * Crea un nuevo técnico y su usuario asociado.
      */
     public function create(Request $request, Response $response, $args){
         $body = json_decode($request->getBody());
 
-        // CORREGIDO: Se llama al nuevo procedimiento que maneja todo.
-        $sql = "CALL nuevoTecnico(:idTecnico, :nombre, :apellido1, :apellido2, :telefono, :celular, :direccion, :correo, :especialidad, :passw);";
+        // CORREGIDO: Se elimina ':especialidad' de la llamada al procedimiento.
+        $sql = "CALL nuevoTecnico(:idTecnico, :nombre, :apellido1, :apellido2, :telefono, :celular, :direccion, :correo, :passw);";
         
         try {
             $con = $this->container->get('base_datos');
@@ -65,30 +65,27 @@ class Tecnico {
             $query->bindValue(':celular', $body->celular);
             $query->bindValue(':direccion', $body->direccion);
             $query->bindValue(':correo', $body->correo);
-            $query->bindValue(':especialidad', $body->especialidad);
-            $query->bindValue(':passw', password_hash($passw, PASSWORD_DEFAULT)); // Se hashea la contraseña
+            // CORREGIDO: Se elimina la línea que bindeaba ':especialidad'.
+            $query->bindValue(':passw', password_hash($passw, PASSWORD_DEFAULT));
 
             $query->execute();
-            $status = 201; // Creado con éxito
+            $status = 201;
 
         } catch(PDOException $e) {
             $status = 500;
         }
 
-        $query = null;
-        $con = null;
-
         return $response->withStatus($status);
     }
 
     /**
-     * Actualiza un técnico existente (Lógica corregida).
+     * Actualiza un técnico existente.
      */
     public function update(Request $request, Response $response, $args) {
         $body = json_decode($request->getBody());
 
-        // CORREGIDO: Se usa CALL para invocar el procedimiento.
-        $sql = "CALL editarTecnico(:id, :idTecnico, :nombre, :apellido1, :apellido2, :telefono, :celular, :direccion, :correo, :especialidad);";
+        // CORREGIDO: Se elimina ':especialidad' de la llamada al procedimiento.
+        $sql = "CALL editarTecnico(:id, :idTecnico, :nombre, :apellido1, :apellido2, :telefono, :celular, :direccion, :correo);";
         
         try {
             $con = $this->container->get('base_datos');
@@ -103,7 +100,7 @@ class Tecnico {
             $query->bindValue(':celular', $body->celular);
             $query->bindValue(':direccion', $body->direccion);
             $query->bindValue(':correo', $body->correo);
-            $query->bindValue(':especialidad', $body->especialidad);
+            // CORREGIDO: Se elimina la línea que bindeaba ':especialidad'.
 
             $query->execute();
             $status = $query->rowCount() > 0 ? 200 : 404;
@@ -112,17 +109,13 @@ class Tecnico {
             $status = 500;
         }
 
-        $query = null;
-        $con = null;
-
         return $response->withStatus($status);
     }
 
     /**
-     * Elimina un técnico y su usuario asociado (Lógica corregida).
+     * Elimina un técnico y su usuario asociado.
      */
     public function delete(Request $request, Response $response, $args){
-        // CORREGIDO: Se usa CALL para invocar el procedimiento.
         $sql = "CALL eliminarTecnico(:id);";
 
         try {
@@ -137,17 +130,13 @@ class Tecnico {
             $status = 500;
         }
 
-        $query = null;
-        $con = null;
-
         return $response->withStatus($status);
     }
 
     /**
-     * Filtra los técnicos con paginación (Lógica corregida y segura).
+     * Filtra los técnicos con paginación.
      */
     public function filtrar(Request $request, Response $response, $args){
-        // SEGURO: Se usan placeholders (?) para prevenir inyección SQL.
         $sql = "CALL filtrarTecnicos(?, ?, ?);";
         
         $con = $this->container->get('base_datos');
