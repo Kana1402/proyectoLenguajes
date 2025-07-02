@@ -1,0 +1,117 @@
+USE taller;
+DELIMITER $$
+
+-- =================================================================
+-- VISTA PARA LEER DATOS DE TÉCNICOS
+-- =================================================================
+CREATE OR REPLACE VIEW vista_tecnicos AS
+SELECT 
+    t.id,
+    t.idTecnico,
+    t.nombre,
+    t.apellido1,
+    t.apellido2,
+    t.telefono,
+    t.celular,
+    t.direccion,
+    t.especialidad,
+    u.correo,
+    u.rol
+FROM tecnico t
+JOIN usuario u ON t.idTecnico = u.idUsuario;
+$$
+
+-- =================================================================
+-- FUNCIÓN PARA CREAR UN NUEVO TÉCNICO
+-- =================================================================
+DROP FUNCTION IF EXISTS nuevoTecnico$$
+CREATE FUNCTION nuevoTecnico (
+    _idTecnico VARCHAR(15),
+    _nombre VARCHAR(50),
+    _apellido1 VARCHAR(50),
+    _apellido2 VARCHAR(50),
+    _telefono VARCHAR(15),
+    _celular VARCHAR(15),
+    _direccion TEXT,
+    _correo VARCHAR(100),
+    _especialidad VARCHAR(100)
+)
+RETURNS INT(1)
+BEGIN
+    DECLARE _cant INT;
+    SELECT COUNT(idTecnico) INTO _cant FROM tecnico WHERE idTecnico = _idTecnico;
+    IF _cant < 1 THEN
+        INSERT INTO tecnico(idTecnico, nombre, apellido1, apellido2, telefono, celular, direccion, correo, especialidad) 
+        VALUES (_idTecnico, _nombre, _apellido1, _apellido2, _telefono, _celular, _direccion, _correo, _especialidad);
+        RETURN 0; -- Éxito
+    END IF;
+    RETURN 1; -- Ya existe
+END$$
+
+-- =================================================================
+-- FUNCIÓN PARA ELIMINAR UN TÉCNICO
+-- =================================================================
+DROP FUNCTION IF EXISTS eliminarTecnico$$
+CREATE FUNCTION eliminarTecnico (_id INT) 
+RETURNS INT(1)
+BEGIN
+    DECLARE _id_usuario_a_borrar VARCHAR(15);
+    DECLARE _cant INT;
+    
+    SELECT idTecnico INTO _id_usuario_a_borrar FROM tecnico WHERE id = _id;
+    
+    SELECT COUNT(idUsuario) INTO _cant FROM usuario WHERE idUsuario = _id_usuario_a_borrar;
+    IF _cant > 0 THEN
+        DELETE FROM usuario WHERE idUsuario = _id_usuario_a_borrar;
+        DELETE FROM tecnico WHERE id = _id;
+        RETURN 1; -- Éxito
+    END IF;
+    RETURN 0; -- No se encontró
+END$$
+
+-- =================================================================
+-- PROCEDIMIENTO PARA EDITAR UN TÉCNICO
+-- =================================================================
+DROP PROCEDURE IF EXISTS editarTecnico$$
+CREATE PROCEDURE editarTecnico (
+    _id INT,
+    _idTecnico VARCHAR(15),
+    _nombre VARCHAR(50),
+    _apellido1 VARCHAR(50),
+    _apellido2 VARCHAR(50),
+    _telefono VARCHAR(15),
+    _celular VARCHAR(15),
+    _direccion TEXT,
+    _correo VARCHAR(100),
+    _especialidad VARCHAR(100)
+)
+BEGIN
+    UPDATE tecnico SET
+        idTecnico = _idTecnico,
+        nombre = _nombre,
+        apellido1 = _apellido1,
+        apellido2 = _apellido2,
+        telefono = _telefono,
+        celular = _celular,
+        direccion = _direccion,
+        correo = _correo,
+        especialidad = _especialidad
+    WHERE id = _id;
+    SELECT ROW_COUNT();
+END$$
+
+-- =================================================================
+-- PROCEDIMIENTO PARA FILTRAR TÉCNICOS
+-- =================================================================
+DROP PROCEDURE IF EXISTS filtrarTecnicos$$
+CREATE PROCEDURE filtrarTecnicos(IN p_filtro VARCHAR(255), IN p_pagina INT, IN p_limite INT)
+BEGIN
+    SET @offset = (p_pagina - 1) * p_limite;
+    SET @filtro_like = CONCAT('%', REPLACE(p_filtro, '%&%', '%'), '%');
+    SET @sql = 'SELECT * FROM vista_tecnicos WHERE CONCAT_WS(" ", idTecnico, nombre, apellido1, especialidad) LIKE ? LIMIT ?, ?';
+    PREPARE stmt FROM @sql;
+    EXECUTE stmt USING @filtro_like, @offset, p_limite;
+    DEALLOCATE PREPARE stmt;
+END$$
+
+DELIMITER ;

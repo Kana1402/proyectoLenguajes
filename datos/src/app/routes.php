@@ -28,7 +28,6 @@
             $endpoint->put('/{id}', Cliente::class . ':update');
             $endpoint->delete('/{id}', Cliente::class . ':delete');
             $endpoint->get('/filtrar/{pag}/{lim}', Cliente::class . ':filtrar');
-
         });
         
 
@@ -41,6 +40,7 @@
         });
 
         $api->group('/usr',function(RouteCollectorProxy $endpoint){
+            $endpoint->get('/{id}', Usuario::class . ':buscar');
             $endpoint->patch('/reset/{idUsuario}', Usuario::class . ':resetPassw');
             $endpoint->patch('/change/{idUsuario}', Usuario::class . ':changePassw');
             $endpoint->patch('/rol/{idUsuario}', Usuario::class . ':changeRol');
@@ -48,9 +48,33 @@
 
         $api->group('/auth',function(RouteCollectorProxy $endpoint){
             $endpoint->patch('', Auth::class . ':iniciar');
-            $endpoint->patch('/refresh', Auth::class . ':refrescar');
             $endpoint->delete('/{idUsuario}', Auth::class . ':cerrar');
-            
+            $endpoint->patch('/refresh', Auth::class . ':refrescar');
+        });
+        
+|       $api->group('/caso',function(RouteCollectorProxy $endpoint){
+            $endpoint->get('/read[/{id}]', Caso::class . ':read');
+            $endpoint->post('', Caso::class . ':create');
+            $endpoint->put('/{id}', Caso::class . ':update');
+            $endpoint->delete('/{id}', Caso::class . ':delete');
+            $endpoint->get('/estado', Caso::class . ':consultarEstado');
+            $endpoint->post('/estado/{id}', Caso::class . ':modificarEstado');
+            $endpoint->get('/cliente/{id}', Caso::class . ':consultarPorCliente');
         });
 
+        
+        $api->group('/oficinista',function(RouteCollectorProxy $endpoint){ 
+            $endpoint->get('/read[/{id}]', Oficinista::class . ':read');
+            $endpoint->post('', Oficinista::class . ':create');
+            $endpoint->put('/{id}', Oficinista::class . ':update');
+            $endpoint->delete('/{id}', Oficinista::class . ':delete');
+            $endpoint->get('/filtrar/{pag}/{lim}', Oficinista::class . ':filtrar');
+        });
+        $api->group('/tecnico',function(RouteCollectorProxy $endpoint){   
+            $endpoint->get('/read[/{id}]', Tecnico::class . ':read');
+            $endpoint->post('', Tecnico::class . ':create');
+            $endpoint->put('/{id}', Tecnico::class . ':update');
+            $endpoint->delete('/{id}', Tecnico::class . ':delete');
+            $endpoint->get('/filtrar/{pag}/{lim}', Tecnico::class . ':filtrar');
+        });
 });

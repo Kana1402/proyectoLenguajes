@@ -1,0 +1,113 @@
+USE taller;
+DELIMITER $$
+
+-- =================================================================
+-- VISTA PARA LEER DATOS DE OFICINISTAS
+-- =================================================================
+CREATE OR REPLACE VIEW vista_oficinistas AS
+SELECT 
+    o.id,
+    o.idOficinista,
+    o.nombre,
+    o.apellido1,
+    o.apellido2,
+    o.telefono,
+    o.celular,
+    o.direccion,
+    u.correo,
+    u.rol
+FROM oficinista o
+JOIN usuario u ON o.idOficinista = u.idUsuario;
+$$
+
+-- =================================================================
+-- FUNCIÓN PARA CREAR UN NUEVO OFICINISTA
+-- =================================================================
+DROP FUNCTION IF EXISTS nuevoOficinista$$
+CREATE FUNCTION nuevoOficinista (
+    _idOficinista VARCHAR(15),
+    _nombre VARCHAR(50),
+    _apellido1 VARCHAR(50),
+    _apellido2 VARCHAR(50),
+    _telefono VARCHAR(15),
+    _celular VARCHAR(15),
+    _direccion TEXT,
+    _correo VARCHAR(100)
+)
+RETURNS INT(1)
+BEGIN
+    DECLARE _cant INT;
+    SELECT COUNT(idOficinista) INTO _cant FROM oficinista WHERE idOficinista = _idOficinista;
+    IF _cant < 1 THEN
+        INSERT INTO oficinista(idOficinista, nombre, apellido1, apellido2, telefono, celular, direccion, correo) 
+        VALUES (_idOficinista, _nombre, _apellido1, _apellido2, _telefono, _celular, _direccion, _correo);
+        RETURN 0; -- Éxito
+    END IF;
+    RETURN 1; -- Ya existe
+END$$
+
+-- =================================================================
+-- FUNCIÓN PARA ELIMINAR UN OFICINISTA
+-- =================================================================
+DROP FUNCTION IF EXISTS eliminarOficinista$$
+CREATE FUNCTION eliminarOficinista (_id INT) 
+RETURNS INT(1)
+BEGIN
+    DECLARE _id_usuario_a_borrar VARCHAR(15);
+    DECLARE _cant INT;
+    
+    SELECT idOficinista INTO _id_usuario_a_borrar FROM oficinista WHERE id = _id;
+    
+    SELECT COUNT(idUsuario) INTO _cant FROM usuario WHERE idUsuario = _id_usuario_a_borrar;
+    IF _cant > 0 THEN
+        DELETE FROM usuario WHERE idUsuario = _id_usuario_a_borrar;
+        DELETE FROM oficinista WHERE id = _id;
+        RETURN 1; -- Éxito
+    END IF;
+    RETURN 0; -- No se encontró
+END$$
+
+-- =================================================================
+-- PROCEDIMIENTO PARA EDITAR UN OFICINISTA
+-- =================================================================
+DROP PROCEDURE IF EXISTS editarOficinista$$
+CREATE PROCEDURE editarOficinista (
+    _id INT,
+    _idOficinista VARCHAR(15),
+    _nombre VARCHAR(50),
+    _apellido1 VARCHAR(50),
+    _apellido2 VARCHAR(50),
+    _telefono VARCHAR(15),
+    _celular VARCHAR(15),
+    _direccion TEXT,
+    _correo VARCHAR(100)
+)
+BEGIN
+    UPDATE oficinista SET
+        idOficinista = _idOficinista,
+        nombre = _nombre,
+        apellido1 = _apellido1,
+        apellido2 = _apellido2,
+        telefono = _telefono,
+        celular = _celular,
+        direccion = _direccion,
+        correo = _correo
+    WHERE id = _id;
+    SELECT ROW_COUNT();
+END$$
+
+-- =================================================================
+-- PROCEDIMIENTO PARA FILTRAR OFICINISTAS
+-- =================================================================
+DROP PROCEDURE IF EXISTS filtrarOficinistas$$
+CREATE PROCEDURE filtrarOficinistas(IN p_filtro VARCHAR(255), IN p_pagina INT, IN p_limite INT)
+BEGIN
+    SET @offset = (p_pagina - 1) * p_limite;
+    SET @filtro_like = CONCAT('%', REPLACE(p_filtro, '%&%', '%'), '%');
+    SET @sql = 'SELECT * FROM vista_oficinistas WHERE CONCAT_WS(" ", idOficinista, nombre, apellido1, correo) LIKE ? LIMIT ?, ?';
+    PREPARE stmt FROM @sql;
+    EXECUTE stmt USING @filtro_like, @offset, p_limite;
+    DEALLOCATE PREPARE stmt;
+END$$
+
+DELIMITER ;

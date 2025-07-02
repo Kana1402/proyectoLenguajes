@@ -1,0 +1,16 @@
+### Crear un nuevo cliente
+POST http://localhost:8000/api/cliente
+Content-Type: application/json
+
+{
+ {
+  "idCliente": "11",
+  "nombre": "Christopher",
+  "apellido1": "Leon",
+  "apellido2": "Salinas",
+  "telefono": "60005000",
+  "celular": "60005000",
+  "direccion": "Limon",
+  "correo": "chrisls@gmail.com"
+}
+}

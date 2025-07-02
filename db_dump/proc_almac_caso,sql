@@ -1,0 +1,117 @@
+USE taller;
+DELIMITER $$
+
+-- =================================================================
+-- PROCEDIMIENTO PARA BUSCAR UN CASO POR ID
+-- =================================================================
+DROP PROCEDURE IF EXISTS buscarCaso$$
+CREATE PROCEDURE buscarCaso (_id INT)
+BEGIN
+    -- Se asume que tienes una VISTA llamada 'vista_casos' para ver los datos relacionados
+    SELECT * FROM vista_casos WHERE id = _id;
+END$$
+
+-- =================================================================
+-- FUNCIÓN PARA CREAR UN NUEVO CASO
+-- Retorna 0 si es exitoso, 1 si no se pudo insertar.
+-- =================================================================
+DROP FUNCTION IF EXISTS nuevoCaso$$
+CREATE FUNCTION nuevoCaso (
+    _id_cliente INT,
+    _id_artefacto INT,
+    _id_tecnico_asignado INT,
+    _descripcion_problema TEXT
+)
+RETURNS INT(1)
+BEGIN
+    DECLARE _exito INT DEFAULT 0;
+
+    -- El manejador de errores cambia _exito a 1 si algo falla
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION SET _exito = 1;
+
+    INSERT INTO casos(id_cliente, id_artefacto, id_tecnico_asignado, descripcion_problema, estado, fecha_recepcion) 
+    VALUES (_id_cliente, _id_artefacto, _id_tecnico_asignado, _descripcion_problema, 'Aceptado', NOW());
+    
+    RETURN _exito;
+END$$
+
+-- =================================================================
+-- FUNCIÓN PARA ELIMINAR UN CASO
+-- Retorna el número de filas eliminadas (1 si tuvo éxito, 0 si no).
+-- =================================================================
+DROP FUNCTION IF EXISTS eliminarCaso$$
+CREATE FUNCTION eliminarCaso (_id INT) 
+RETURNS INT(1)
+BEGIN
+    DECLARE _cant INT;
+    SELECT COUNT(id) INTO _cant FROM casos WHERE id = _id;
+    IF _cant > 0 THEN
+        DELETE FROM casos WHERE id = _id;
+    END IF;
+    RETURN _cant;
+END$$
+
+-- =================================================================
+-- PROCEDIMIENTO PARA EDITAR/ACTUALIZAR UN CASO
+-- Retorna el número de filas afectadas.
+-- =================================================================
+DROP PROCEDURE IF EXISTS editarCaso$$
+CREATE PROCEDURE editarCaso (
+    _id INT,
+    _id_cliente INT,
+    _id_artefacto INT,
+    _id_tecnico_asignado INT,
+    _descripcion_problema TEXT,
+    _estado VARCHAR(50)
+)
+BEGIN
+    UPDATE casos
+    SET
+        id_cliente = _id_cliente,
+        id_artefacto = _id_artefacto,
+        id_tecnico_asignado = _id_tecnico_asignado,
+        descripcion_problema = _descripcion_problema,
+        estado = _estado
+    WHERE id = _id;
+    SELECT ROW_COUNT(); -- Devuelve las filas afectadas
+END$$
+
+-- =================================================================
+-- PROCEDIMIENTO PARA CAMBIAR EL ESTADO DE UN CASO
+-- =================================================================
+DROP PROCEDURE IF EXISTS cambiarEstadoCaso$$
+CREATE PROCEDURE cambiarEstadoCaso (
+    _id INT,
+    _nuevo_estado VARCHAR(50)
+)
+BEGIN
+    UPDATE casos
+    SET estado = _nuevo_estado
+    WHERE id = _id;
+    SELECT ROW_COUNT(); -- Devuelve las filas afectadas
+END$$
+
+
+-- =================================================================
+-- PROCEDIMIENTO PARA FILTRAR CASOS (Mantenemos este como en el ejemplo anterior
+-- ya que es para búsquedas complejas y paginadas)
+-- =================================================================
+DROP PROCEDURE IF EXISTS filtrarCasos$$
+CREATE PROCEDURE filtrarCasos(
+    IN p_filtro VARCHAR(255),
+    IN p_pagina INT,
+    IN p_limite INT
+)
+BEGIN
+    SET @offset = (p_pagina - 1) * p_limite;
+    SET @filtro_like = CONCAT('%', REPLACE(p_filtro, '%&%', '%'), '%');
+
+    -- Se asume la existencia de la vista 'vista_casos'
+    SET @sql = 'SELECT * FROM vista_casos WHERE CONCAT_WS(" ", id, nombre_cliente, apellido_cliente, artefacto, estado, tecnico_asignado) LIKE ? LIMIT ?, ?';
+
+    PREPARE stmt FROM @sql;
+    EXECUTE stmt USING @filtro_like, @offset, p_limite;
+    DEALLOCATE PREPARE stmt;
+END$$
+
+DELIMITER ;

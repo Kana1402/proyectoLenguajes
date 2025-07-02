@@ -100,4 +100,5 @@ CREATE TABLE administrador (
   UNIQUE KEY idx_CorreoAdministrador (correo)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
 
+
 COMMIT;
