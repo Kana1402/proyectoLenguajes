@@ -1,0 +1,18 @@
+<aside id="default-sidebar" class=" md:w-64 w-16 h-screen transition-all " aria-label="Sidebar">
+    <div class="h-full px-3 py-4 overflow-y-auto bg-gray-50 dark:bg-gray-800">
+        <mat-nav-list>
+            @for(item of menuItem();track item.label){
+            <a href="" [routerLink]="item.route"
+                class="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-300 dark:hover:bg-gray-700 group">
+                <mat-icon matListItemIcon
+                    class="shrink-0 w-5 h-5 text-gray-500 transition duration-75 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white">
+                    {{item.icon}}
+                </mat-icon>
+                <span class="md:block hidden flex-1 ms-3 whitespace-nowrap">{{item.label}}</span>
+            </a>
+            }
+
+        </mat-nav-list>
+
+    </div>
+</aside>
