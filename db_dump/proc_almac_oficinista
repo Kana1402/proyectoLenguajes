@@ -1,16 +1,3 @@
-Sí, por supuesto. Aquí tienes el bloque de código SQL completo con todas las correcciones y mejoras que discutimos.
-
-Los cambios principales son:
-
-Convertir las FUNCIONES a PROCEDIMIENTOS para crear y eliminar, ya que modifican datos.
-
-Añadir TRANSACTION a todos los procedimientos que modifican más de una tabla para garantizar que los datos nunca queden inconsistentes.
-
-Sincronizar la tabla usuario al crear y editar un oficinista.
-
-Procedimientos Almacenados Corregidos
-SQL
-
 USE taller;
 DELIMITER $$
 

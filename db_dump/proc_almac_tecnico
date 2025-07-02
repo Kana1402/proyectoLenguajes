@@ -1,12 +1,3 @@
-No, el procedimiento para tecnico tiene los mismos problemas críticos que tenía el de oficinista.
-
-La causa principal es que las operaciones de crear, editar y eliminar no están sincronizadas con la tabla usuario, lo que creará datos inconsistentes. Por ejemplo, al crear un técnico, no se crea su registro de usuario para iniciar sesión.
-
-Script Corregido para Técnicos
-Aquí tienes el script completo para tecnico con las mismas correcciones que aplicamos al de oficinista. He convertido las funciones en procedimientos y añadido transacciones para garantizar la integridad de los datos.
-
-SQL
-
 USE taller;
 DELIMITER $$
 

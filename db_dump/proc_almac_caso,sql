@@ -2,113 +2,134 @@ USE taller;
 DELIMITER $$
 
 -- =================================================================
--- PROCEDIMIENTO PARA BUSCAR UN CASO POR ID
+-- VISTA PARA CASOS (MODIFICADA)
+-- Ahora obtiene el estado más reciente desde la tabla 'historialCaso'.
 -- =================================================================
-DROP PROCEDURE IF EXISTS buscarCaso$$
-CREATE PROCEDURE buscarCaso (_id INT)
-BEGIN
-    -- Se asume que tienes una VISTA llamada 'vista_casos' para ver los datos relacionados
-    SELECT * FROM vista_casos WHERE id = _id;
-END$$
+CREATE OR REPLACE VIEW vista_casos AS
+SELECT 
+    c.id,
+    c.descripcion,
+    c.fechaEntrada,
+    c.fechaSalida,
+    cli.nombre AS nombre_cliente,
+    cli.apellido1 AS apellido1_cliente,
+    art.marca AS marca_artefacto,
+    art.modelo AS modelo_artefacto,
+    tec.nombre AS nombre_tecnico,
+    tec.apellido1 AS apellido1_tecnico,
+    (SELECT estado FROM historialCaso hc WHERE hc.idCaso = c.id ORDER BY hc.fechaCambio DESC LIMIT 1) AS estado_actual
+FROM caso c
+JOIN artefacto art ON c.idArtefacto = art.id
+JOIN cliente cli ON art.idCliente = cli.id
+LEFT JOIN tecnico tec ON c.idTecnico = tec.idTecnico;
+$$
+
 
 -- =================================================================
--- FUNCIÓN PARA CREAR UN NUEVO CASO
--- Retorna 0 si es exitoso, 1 si no se pudo insertar.
+-- PROCEDIMIENTO PARA CREAR UN NUEVO CASO (ADAPTADO)
+-- Crea el caso y su primer registro de estado en 'historialCaso'.
 -- =================================================================
-DROP FUNCTION IF EXISTS nuevoCaso$$
-CREATE FUNCTION nuevoCaso (
-    _id_cliente INT,
-    _id_artefacto INT,
-    _id_tecnico_asignado INT,
-    _descripcion_problema TEXT
+DROP PROCEDURE IF EXISTS nuevoCaso$$
+CREATE PROCEDURE nuevoCaso (
+    _idTecnico VARCHAR(15),
+    _idCreador VARCHAR(15),
+    _idArtefacto INT,
+    _descripcion VARCHAR(100)
 )
-RETURNS INT(1)
 BEGIN
-    DECLARE _exito INT DEFAULT 0;
-
-    -- El manejador de errores cambia _exito a 1 si algo falla
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION SET _exito = 1;
-
-    INSERT INTO casos(id_cliente, id_artefacto, id_tecnico_asignado, descripcion_problema, estado, fecha_recepcion) 
-    VALUES (_id_cliente, _id_artefacto, _id_tecnico_asignado, _descripcion_problema, 'Aceptado', NOW());
+    DECLARE last_case_id INT;
     
-    RETURN _exito;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SELECT 'Error: No se pudo crear el caso.' AS Resultado;
+    END;
+
+    START TRANSACTION;
+
+    INSERT INTO caso(idTecnico, idCreador, idArtefacto, descripcion, fechaEntrada) 
+    VALUES (_idTecnico, _idCreador, _idArtefacto, _descripcion, CURDATE());
+    
+    SET last_case_id = LAST_INSERT_ID();
+    
+    -- Insertar el primer estado en el historial
+    INSERT INTO historialCaso(idCaso, idResponsable, estado, fechaCambio, descripcion)
+    VALUES (last_case_id, _idCreador, 0, CURDATE(), 'Caso ingresado al sistema.'); -- Estado 0 = Ingresado
+
+    COMMIT;
+    SELECT 'Caso creado con éxito.' AS Resultado;
 END$$
 
 -- =================================================================
--- FUNCIÓN PARA ELIMINAR UN CASO
--- Retorna el número de filas eliminadas (1 si tuvo éxito, 0 si no).
--- =================================================================
-DROP FUNCTION IF EXISTS eliminarCaso$$
-CREATE FUNCTION eliminarCaso (_id INT) 
-RETURNS INT(1)
-BEGIN
-    DECLARE _cant INT;
-    SELECT COUNT(id) INTO _cant FROM casos WHERE id = _id;
-    IF _cant > 0 THEN
-        DELETE FROM casos WHERE id = _id;
-    END IF;
-    RETURN _cant;
-END$$
-
--- =================================================================
--- PROCEDIMIENTO PARA EDITAR/ACTUALIZAR UN CASO
--- Retorna el número de filas afectadas.
+-- PROCEDIMIENTO PARA EDITAR UN CASO (ADAPTADO)
+-- Solo puede editar los campos que existen en la tabla 'caso'.
 -- =================================================================
 DROP PROCEDURE IF EXISTS editarCaso$$
 CREATE PROCEDURE editarCaso (
     _id INT,
-    _id_cliente INT,
-    _id_artefacto INT,
-    _id_tecnico_asignado INT,
-    _descripcion_problema TEXT,
-    _estado VARCHAR(50)
+    _idTecnico VARCHAR(15),
+    _descripcion VARCHAR(100)
 )
 BEGIN
-    UPDATE casos
-    SET
-        id_cliente = _id_cliente,
-        id_artefacto = _id_artefacto,
-        id_tecnico_asignado = _id_tecnico_asignado,
-        descripcion_problema = _descripcion_problema,
-        estado = _estado
+    UPDATE caso SET
+        idTecnico = _idTecnico,
+        descripcion = _descripcion
     WHERE id = _id;
-    SELECT ROW_COUNT(); -- Devuelve las filas afectadas
+    SELECT 'Caso actualizado con éxito.' AS Resultado;
 END$$
 
 -- =================================================================
--- PROCEDIMIENTO PARA CAMBIAR EL ESTADO DE UN CASO
+-- PROCEDIMIENTO PARA ELIMINAR UN CASO (ADAPTADO)
+-- Elimina el caso y todo su historial asociado.
+-- =================================================================
+DROP PROCEDURE IF EXISTS eliminarCaso$$
+CREATE PROCEDURE eliminarCaso (_id INT)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SELECT 'Error: No se pudo eliminar el caso.' AS Resultado;
+    END;
+
+    START TRANSACTION;
+    -- 1. Eliminar el historial del caso
+    DELETE FROM historialCaso WHERE idCaso = _id;
+    -- 2. Eliminar el caso principal
+    DELETE FROM caso WHERE id = _id;
+    COMMIT;
+    
+    SELECT 'Caso y su historial eliminados con éxito.' AS Resultado;
+END$$
+
+
+-- =================================================================
+-- PROCEDIMIENTO PARA CAMBIAR EL ESTADO DE UN CASO (ADAPTADO)
+-- Ahora, inserta un nuevo registro en la tabla 'historialCaso'.
 -- =================================================================
 DROP PROCEDURE IF EXISTS cambiarEstadoCaso$$
-CREATE PROCEDURE cambiarEstadoCaso (
-    _id INT,
-    _nuevo_estado VARCHAR(50)
-)
+CREATE PROCEDURE cambiarEstadoCaso (_idCaso INT, _idResponsable VARCHAR(15), _nuevo_estado INT, _descripcion_cambio VARCHAR(255))
 BEGIN
-    UPDATE casos
-    SET estado = _nuevo_estado
-    WHERE id = _id;
-    SELECT ROW_COUNT(); -- Devuelve las filas afectadas
+    INSERT INTO historialCaso(idCaso, idResponsable, estado, fechaCambio, descripcion)
+    VALUES (_idCaso, _idResponsable, _nuevo_estado, CURDATE(), _descripcion_cambio);
+
+    -- Si el estado es 4 (Entregado), actualizamos la fecha de salida en la tabla principal 'caso'
+    IF _nuevo_estado = 4 THEN
+        UPDATE caso SET fechaSalida = CURDATE() WHERE id = _idCaso;
+    END IF;
+
+    SELECT 'Estado del caso actualizado en el historial.' AS Resultado;
 END$$
 
-
 -- =================================================================
--- PROCEDIMIENTO PARA FILTRAR CASOS (Mantenemos este como en el ejemplo anterior
--- ya que es para búsquedas complejas y paginadas)
+-- PROCEDIMIENTO PARA FILTRAR CASOS (ADAPTADO)
+-- Funciona con la nueva vista que calcula el estado actual.
 -- =================================================================
 DROP PROCEDURE IF EXISTS filtrarCasos$$
-CREATE PROCEDURE filtrarCasos(
-    IN p_filtro VARCHAR(255),
-    IN p_pagina INT,
-    IN p_limite INT
-)
+CREATE PROCEDURE filtrarCasos(IN p_filtro VARCHAR(255), IN p_pagina INT, IN p_limite INT)
 BEGIN
     SET @offset = (p_pagina - 1) * p_limite;
     SET @filtro_like = CONCAT('%', REPLACE(p_filtro, '%&%', '%'), '%');
-
-    -- Se asume la existencia de la vista 'vista_casos'
-    SET @sql = 'SELECT * FROM vista_casos WHERE CONCAT_WS(" ", id, nombre_cliente, apellido_cliente, artefacto, estado, tecnico_asignado) LIKE ? LIMIT ?, ?';
-
+    SET @sql = 'SELECT * FROM vista_casos WHERE CONCAT_WS(" ", id, nombre_cliente, marca_artefacto, estado_actual) LIKE ? ORDER BY id DESC LIMIT ?, ?';
     PREPARE stmt FROM @sql;
     EXECUTE stmt USING @filtro_like, @offset, p_limite;
     DEALLOCATE PREPARE stmt;
