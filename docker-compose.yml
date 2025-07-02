@@ -1,0 +1,78 @@
+networks:
+  dto-red:
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.28.0.0/16"
+          
+services:
+  db:
+    image: mysql:latest
+    container_name: base_datos
+    environment:
+      MYSQL_DATABASE: taller
+      #- MYSQL_ROOT_PASSWORD=db_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+      
+    ports:
+      - 3307:3306
+    volumes:
+      - ./mysql:/var/lib/mysql
+      - ./db_dump:/docker-entrypoint-initdb.d
+    networks:
+      dto-red:
+        ipv4_address: "172.28.0.10"
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    ports:
+      - 8080:80
+    environment:
+      - PMA_HOST=db
+      - PMA_PORT=3306
+    networks:
+      dto-red:
+        ipv4_address: "172.28.0.11"
+  webdatos:
+    container_name: web_datos
+    volumes:
+      - ./datos/src:/var/www/html/src
+      - ./datos/public:/var/www/html/public
+    build:
+      context: .
+      dockerfile: ./datos/Dockerfile
+    ports:
+      - 8000:80
+    depends_on:
+      - db
+    networks:
+      dto-red:
+        ipv4_address: "172.28.0.12"
+
+  webnegocio:
+    container_name: web_negocio
+    volumes:
+      - ./negocio/src:/var/www/html/src
+      - ./negocio/public:/var/www/html/public
+    build:
+      context: .
+      dockerfile: ./negocio/Dockerfile
+    ports:
+      - 9000:80
+    depends_on:
+      - webdatos
+    networks:
+      dto-red:
+        ipv4_address: "172.28.0.13"
+secrets:
+  db_password:
+    file: ./db_pasword.txt
+    
+volumes:
+  db_dump:
+  mysql:
+  datos:
+  webdatos:
+  webnegocio:
