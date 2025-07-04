@@ -13,67 +13,94 @@
 
 
 
-        public function createP($recurso, $rol, $datos){
-            $sql= "SELECT nuevo$recurso(";
-            foreach($datos as $key => $value){
-                $sql .= ":$key,";
-            }
-            $sql= substr($sql, 0, -1) . ");";
-            reset($datos);
-            $claveId= key($datos);
-                 
-            $con=  $this->container->get('base_datos');
-            $con->beginTransaction();
-            $query = $con->prepare($sql);
-            
-            foreach($datos as $key => $value){
-                $TIPO= gettype($value)=="integer" ? PDO::PARAM_INT : PDO::PARAM_STR;
-                $value=filter_var($value, FILTER_SANITIZE_SPECIAL_CHARS);
-                $query->bindValue($key, $value, $TIPO);
-            };
+public function createP($recurso, $rol, $datos){
+    // Definir el orden fijo de parámetros que espera la función SQL
+    $paramNames = ['idCliente', 'nombre', 'apellido1', 'apellido2', 'telefono', 'celular', 'direccion', 'correo'];
 
-            try{
-                $query->execute();
-                //$con->commit();
-                $res= $query->fetch(PDO::FETCH_NUM)[0];
-                $status= match($res) {
-                    0 => 201,
-                    1 => 409,
-                };
+    // Validar que $datos no esté vacío
+    if (empty($datos)) {
+        error_log("Error: datos vacíos en createP");
+        return 400; // Bad Request o código que uses para indicar error de entrada
+    }
 
-                $id = $datos[$claveId];
-            
-                $sql = "SELECT nuevoUsuario(:idUsuario, :correo, :rol, :passw);";
+    // Validar que el idCliente exista
+    $claveId = 'idCliente';
+    if (!isset($datos[$claveId]) || empty($datos[$claveId])) {
+        error_log("Error: no se recibió el idCliente en datos");
+        return 400;
+    }
+    $id = $datos[$claveId];
 
-                //Hash a la contraseña
-                $passw= password_hash($id, PASSWORD_BCRYPT, ['cost' => 10]);
-                
+    // Construir SQL con parámetros en orden correcto
+    $sql = "SELECT nuevo$recurso(";
+    foreach($paramNames as $param){
+        $sql .= ":$param,";
+    }
+    $sql = rtrim($sql, ',') . ");";
 
-                $query = $con->prepare($sql);
-                $query->bindValue(':idUsuario', $id, PDO::PARAM_STR);
-                $query->bindValue(':correo', $datos['correo'], PDO::PARAM_STR);
-                $query->bindValue(':rol', $rol, PDO::PARAM_INT);
-                $query->bindValue(':passw', $passw, PDO::PARAM_STR);   
+    $con = $this->container->get('base_datos');
+    $con->beginTransaction();
 
-                $query->execute();
+    try {
+        $query = $con->prepare($sql);
 
-                if($status==409){
-                    $con->rollBack();
-                }else{
-                    $con->commit();
-                }
-                $res= $query->fetch(PDO::FETCH_NUM)[0];
-                
-            } catch(\PDOException $e){
-                $status= 500;
-                $con->rollBack();
-            }
-
-            $query=null;
-            $con=null;
-          // return $response ->withStatus($status);
-          return $status;
+        // Bindear valores con sanitización y tipo correcto
+        foreach ($paramNames as $param) {
+            $value = $datos[$param] ?? null; // null si falta
+            $tipo = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $value = filter_var($value, FILTER_SANITIZE_SPECIAL_CHARS);
+            $query->bindValue(":$param", $value, $tipo);
         }
+
+        $query->execute();
+
+        // Obtener resultado y validar que no sea false
+        $resFetch = $query->fetch(PDO::FETCH_NUM);
+        if (!$resFetch) {
+            throw new \Exception("No se obtuvo resultado del procedimiento nuevo$recurso");
+        }
+        $res = $resFetch[0];
+
+        $status = match($res) {
+            0 => 201,  // creado correctamente
+            1 => 409,  // conflicto (ya existe)
+            default => 500,
+        };
+
+        // Crear usuario con idCliente, correo, rol y password hasheada
+        $sqlUser = "SELECT nuevoUsuario(:idUsuario, :correo, :rol, :passw);";
+        $passw = password_hash($id, PASSWORD_BCRYPT, ['cost' => 10]);
+
+        $query = $con->prepare($sqlUser);
+        $query->bindValue(':idUsuario', $id, PDO::PARAM_STR);
+        $query->bindValue(':correo', $datos['correo'] ?? '', PDO::PARAM_STR);
+        $query->bindValue(':rol', $rol, PDO::PARAM_INT);
+        $query->bindValue(':passw', $passw, PDO::PARAM_STR);
+        $query->execute();
+
+        $resFetchUser = $query->fetch(PDO::FETCH_NUM);
+        if (!$resFetchUser) {
+            throw new \Exception("No se obtuvo resultado del procedimiento nuevoUsuario");
+        }
+
+        if ($status == 409) {
+            $con->rollBack();
+        } else {
+            $con->commit();
+        }
+
+    } catch(\Exception $e) {
+        error_log("Error en createP: " . $e->getMessage());
+        $con->rollBack();
+        $status = 500;
+    }
+
+    $query = null;
+    $con = null;
+
+    return $status;
+}
+
 
          public function updateP($recurso, $datos, $id){
             $sql= "SELECT editar$recurso(:id,";

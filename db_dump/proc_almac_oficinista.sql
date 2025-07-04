@@ -3,7 +3,6 @@ DELIMITER $$
 
 -- =================================================================
 -- VISTA PARA LEER DATOS DE OFICINISTAS
--- Nota: Esta vista asume que el correo en 'usuario' es el principal para el login.
 -- =================================================================
 CREATE OR REPLACE VIEW vista_oficinistas AS
 SELECT 
@@ -15,15 +14,14 @@ SELECT
     o.telefono,
     o.celular,
     o.direccion,
-    u.correo, -- Correo usado para el login
+    u.correo,
     u.rol
 FROM oficinista o
 JOIN usuario u ON o.idOficinista = u.idUsuario;
 $$
 
 -- =================================================================
--- PROCEDIMIENTO PARA CREAR UN NUEVO OFICINISTA (CORREGIDO)
--- Ahora es un PROCEDIMIENTO y maneja la creación del usuario y del oficinista.
+-- PROCEDIMIENTO PARA CREAR UN NUEVO OFICINISTA
 -- =================================================================
 DROP PROCEDURE IF EXISTS nuevoOficinista$$
 CREATE PROCEDURE nuevoOficinista (
@@ -35,10 +33,9 @@ CREATE PROCEDURE nuevoOficinista (
     _celular VARCHAR(9),
     _direccion VARCHAR(255),
     _correo VARCHAR(100),
-    _passw VARCHAR(255) -- Se añade el parámetro para la contraseña
+    _passw VARCHAR(255)
 )
 BEGIN
-    -- Manejador de errores para revertir la transacción si algo falla
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
@@ -46,48 +43,39 @@ BEGIN
     END;
 
     START TRANSACTION;
-    
-    -- 1. Crear el registro en la tabla 'usuario' para la autenticación
-    -- Se asume que el ROL para oficinista es '2'
+
     INSERT INTO usuario(idUsuario, correo, rol, passw) 
     VALUES (_idOficinista, _correo, 2, _passw);
-    
-    -- 2. Crear el registro en la tabla 'oficinista'
+
     INSERT INTO oficinista(idOficinista, nombre, apellido1, apellido2, telefono, celular, direccion, correo) 
     VALUES (_idOficinista, _nombre, _apellido1, _apellido2, _telefono, _celular, _direccion, _correo);
-    
+
     COMMIT;
     SELECT 'Oficinista creado con éxito.' AS Resultado;
 END$$
 
 -- =================================================================
--- PROCEDIMIENTO PARA ELIMINAR UN OFICINISTA (CORREGIDO)
--- Ahora es un PROCEDIMIENTO con transacción para mayor seguridad.
+-- PROCEDIMIENTO PARA ELIMINAR UN OFICINISTA
 -- =================================================================
 DROP PROCEDURE IF EXISTS eliminarOficinista$$
 CREATE PROCEDURE eliminarOficinista (_id_oficinista INT)
 BEGIN
     DECLARE _idUsuarioABorrar VARCHAR(15);
 
-    -- Manejador de errores
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
         SELECT 'Error: No se pudo eliminar el oficinista. Se revirtieron los cambios.' AS Resultado;
     END;
 
-    -- Obtener el idUsuario a partir del id de la tabla oficinista
     SELECT idOficinista INTO _idUsuarioABorrar FROM oficinista WHERE id = _id_oficinista;
-    
+
     IF _idUsuarioABorrar IS NOT NULL THEN
         START TRANSACTION;
-        
-        -- 1. Eliminar de la tabla oficinista
+
         DELETE FROM oficinista WHERE id = _id_oficinista;
-        
-        -- 2. Eliminar de la tabla usuario
         DELETE FROM usuario WHERE idUsuario = _idUsuarioABorrar;
-        
+
         COMMIT;
         SELECT 'Oficinista eliminado con éxito.' AS Resultado;
     ELSE
@@ -96,8 +84,7 @@ BEGIN
 END$$
 
 -- =================================================================
--- PROCEDIMIENTO PARA EDITAR UN OFICINISTA (CORREGIDO)
--- Ahora sincroniza el correo en la tabla 'usuario'.
+-- PROCEDIMIENTO PARA EDITAR UN OFICINISTA
 -- =================================================================
 DROP PROCEDURE IF EXISTS editarOficinista$$
 CREATE PROCEDURE editarOficinista (
@@ -112,7 +99,6 @@ CREATE PROCEDURE editarOficinista (
     _correo VARCHAR(100)
 )
 BEGIN
-    -- Manejador de errores
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
@@ -121,7 +107,6 @@ BEGIN
 
     START TRANSACTION;
 
-    -- 1. Actualizar la tabla principal de oficinista
     UPDATE oficinista SET
         idOficinista = _idOficinista,
         nombre = _nombre,
@@ -132,8 +117,7 @@ BEGIN
         direccion = _direccion,
         correo = _correo
     WHERE id = _id;
-    
-    -- 2. Actualizar también la tabla de usuario para mantener la consistencia del correo
+
     UPDATE usuario SET
         correo = _correo
     WHERE idUsuario = _idOficinista;
@@ -143,8 +127,7 @@ BEGIN
 END$$
 
 -- =================================================================
--- PROCEDIMIENTO PARA FILTRAR OFICINISTAS (SIN CAMBIOS)
--- Este procedimiento ya estaba bien implementado.
+-- PROCEDIMIENTO PARA FILTRAR OFICINISTAS (CORREGIDO)
 -- =================================================================
 DROP PROCEDURE IF EXISTS filtrarOficinistas$$
 CREATE PROCEDURE filtrarOficinistas(
@@ -166,11 +149,12 @@ BEGIN
         LIMIT ?, ?
     ';
 
+    SET @v1 = v_filtro_like;
+    SET @v2 = v_offset;
+    SET @v3 = p_limite;
+
     PREPARE stmt FROM @sql;
-    EXECUTE stmt USING 
-        CAST(v_filtro_like AS CHAR), 
-        CAST(v_offset AS SIGNED), 
-        CAST(p_limite AS SIGNED);
+    EXECUTE stmt USING @v1, @v2, @v3;
     DEALLOCATE PREPARE stmt;
 END$$
 

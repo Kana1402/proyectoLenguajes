@@ -2,17 +2,21 @@ USE taller;
 
 DELIMITER $$
 
-
+-- ==============================================
+-- PROCEDURE: buscarAdministrador
+-- ==============================================
 DROP PROCEDURE IF EXISTS buscarAdministrador$$
 CREATE PROCEDURE buscarAdministrador (_id INT, _idAdministrador VARCHAR(15))
 BEGIN
     SELECT * FROM administrador WHERE id = _id OR idAdministrador = _idAdministrador;
 END$$
 
-
+-- ==============================================
+-- PROCEDURE: filtrarAdministrador
+-- ==============================================
 DROP PROCEDURE IF EXISTS filtrarAdministrador$$
 CREATE PROCEDURE filtrarAdministrador (
-    _parametros VARCHAR(250), -- %idAdministrador%&%nombre%&%apellido1%&%apellido2%&
+    _parametros VARCHAR(250), 
     _pagina SMALLINT UNSIGNED, 
     _cantRegs SMALLINT UNSIGNED)
 BEGIN
@@ -24,7 +28,9 @@ BEGIN
     DEALLOCATE PREPARE stmt;
 END$$
 
-
+-- ==============================================
+-- PROCEDURE: numRegsAdministrador
+-- ==============================================
 DROP PROCEDURE IF EXISTS numRegsAdministrador$$
 CREATE PROCEDURE numRegsAdministrador (
     _parametros VARCHAR(250))
@@ -36,20 +42,22 @@ BEGIN
     DEALLOCATE PREPARE stmt;
 END$$
 
-
-DROP FUNCTION IF EXISTS nuevoAdministrador$$
-CREATE FUNCTION nuevoAdministrador (
-    _idAdministrador VARCHAR(15),
-    _nombre VARCHAR(30),
-    _apellido1 VARCHAR(15),
-    _apellido2 VARCHAR(15),
-    _telefono VARCHAR(9),
-    _celular VARCHAR(9),
-    _direccion VARCHAR(255),
-    _correo VARCHAR(100))
-RETURNS INT(1)
+-- ==============================================
+-- PROCEDURE: nuevoAdministrador
+-- ==============================================
+DROP PROCEDURE IF EXISTS nuevoAdministrador$$
+CREATE PROCEDURE nuevoAdministrador (
+    IN _idAdministrador VARCHAR(15),
+    IN _nombre VARCHAR(30),
+    IN _apellido1 VARCHAR(15),
+    IN _apellido2 VARCHAR(15),
+    IN _telefono VARCHAR(9),
+    IN _celular VARCHAR(9),
+    IN _direccion VARCHAR(255),
+    IN _correo VARCHAR(100),
+    OUT _cant INT
+)
 BEGIN
-    DECLARE _cant INT;
     SELECT COUNT(id) INTO _cant FROM administrador 
     WHERE idAdministrador = _idAdministrador OR correo = _correo;
     IF _cant < 1 THEN
@@ -58,24 +66,25 @@ BEGIN
         VALUES (_idAdministrador, _nombre, _apellido1, _apellido2, _telefono, 
                 _celular, _direccion, _correo);
     END IF;
-    RETURN _cant;
 END$$
 
-
-DROP FUNCTION IF EXISTS editarAdministrador$$
-CREATE FUNCTION editarAdministrador (
-    _id INT, 
-    _idAdministrador VARCHAR(15),
-    _nombre VARCHAR(30),
-    _apellido1 VARCHAR(15),
-    _apellido2 VARCHAR(15),
-    _telefono VARCHAR(9),
-    _celular VARCHAR(9),
-    _direccion VARCHAR(255),
-    _correo VARCHAR(100))
-RETURNS INT(1)
+-- ==============================================
+-- PROCEDURE: editarAdministrador
+-- ==============================================
+DROP PROCEDURE IF EXISTS editarAdministrador$$
+CREATE PROCEDURE editarAdministrador (
+    IN _id INT,
+    IN _idAdministrador VARCHAR(15),
+    IN _nombre VARCHAR(30),
+    IN _apellido1 VARCHAR(15),
+    IN _apellido2 VARCHAR(15),
+    IN _telefono VARCHAR(9),
+    IN _celular VARCHAR(9),
+    IN _direccion VARCHAR(255),
+    IN _correo VARCHAR(100),
+    OUT _cant INT
+)
 BEGIN
-    DECLARE _cant INT;
     SELECT COUNT(id) INTO _cant FROM administrador WHERE id = _id;
     IF _cant > 0 THEN
         UPDATE administrador SET
@@ -89,24 +98,25 @@ BEGIN
             correo = _correo
         WHERE id = _id;
     END IF;
-    RETURN _cant;
 END$$
 
-
-DROP FUNCTION IF EXISTS eliminarAdministrador$$
-CREATE FUNCTION eliminarAdministrador (_id INT(1)) RETURNS INT(1)
+-- ==============================================
+-- PROCEDURE: eliminarAdministrador
+-- ==============================================
+DROP PROCEDURE IF EXISTS eliminarAdministrador$$
+CREATE PROCEDURE eliminarAdministrador (
+    IN _id INT,
+    OUT _resp INT
+)
 BEGIN
     DECLARE _cant INT;
-    DECLARE _resp INT;
     SET _resp = 0;
-    
+
     SELECT COUNT(id) INTO _cant FROM administrador WHERE id = _id;
     IF _cant > 0 THEN
         SET _resp = 1;
         DELETE FROM administrador WHERE id = _id;
     END IF;
-    
-    RETURN _resp;
 END$$
 
 DELIMITER ;

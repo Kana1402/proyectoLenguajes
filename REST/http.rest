@@ -14,7 +14,7 @@ Content-Type: application/json
 }
 
 ### Crear nuevo técnico
-POST http://localhost:8000/api/tecnicos
+POST http://localhost:8000/api/tecnico
 Content-Type: application/json
 
 {
@@ -26,5 +26,48 @@ Content-Type: application/json
   "celular": "88886655",
   "direccion": "Cartago",
   "correo": "andrea@correo.com",
+  "passw": "123456"
+}
+
+### Crear nuevo administrador
+
+POST http://localhost:8000/api/administrador
+Content-Type: application/json
+
+{
+  "idAdministrador": "01",
+  "nombre": "Andrea",
+  "apellido1": "Chaves",
+  "apellido2": "Morales",
+  "telefono": "22556688",
+  "celular": "88886655",
+  "direccion": "Cartago",
+  "correo": "andrea.admin@correo.com"
+}
+
+### Crear nuevo caso
+POST http://localhost:8000/api/caso
+Content-Type: application/json
+
+{
+  "idTecnico": "555",
+  "idCreador": "123",
+  "idArtefacto": 7,
+  "descripcion": "Artefacto con problema de encendido"
+}
+
+### Crear nuevo oficinista
+POST http://localhost:8000/api/oficinista
+Content-Type: application/json
+
+{
+  "idOficinista": "777",
+  "nombre": "María",
+  "apellido1": "Lopez",
+  "apellido2": "Soto",
+  "telefono": "22224444",
+  "celular": "89997777",
+  "direccion": "San José, Costa Rica",
+  "correo": "maria.lopez@correo.com",
   "passw": "123456"
 }
