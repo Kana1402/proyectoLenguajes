@@ -5,7 +5,8 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Psr\Container\ContainerInterface;
 use PDO;
-use PDOException; // Importar PDOException para el manejo de errores
+use PDOException;
+use Slim\Psr7\Stream;
 
 class Oficinista {
     protected $container;
@@ -15,11 +16,7 @@ class Oficinista {
         $this->container = $c;
     }
 
-    /**
-     * Lee uno o todos los oficinistas usando la vista.
-     */
     public function read(Request $request, Response $response, $args){
-        // La vista ya une las tablas, este método es correcto.
         $sql = "SELECT * FROM vista_oficinistas ";
         if(isset($args['id'])){
             $sql .= "WHERE id = :id";
@@ -43,11 +40,21 @@ class Oficinista {
             ->withStatus($status);
     }
 
-    /**
-     * Crea un nuevo oficinista y su usuario asociado (Lógica corregida).
-     */
-     public function create(Request $request, Response $response, $args){
-        $body = json_decode($request->getBody());
+    public function create(Request $request, Response $response, $args){
+        $body = json_decode($request->getBody()->getContents());
+
+        if (!$body || !isset(
+            $body->idOficinista, $body->nombre, $body->apellido1,
+            $body->apellido2, $body->telefono, $body->celular,
+            $body->direccion, $body->correo
+        )) {
+            $stream = new Stream(fopen('php://temp', 'r+'));
+            $stream->write(json_encode(['error' => 'Datos incompletos o mal formateados.']));
+            return $response
+                ->withHeader('Content-Type', 'application/json')
+                ->withStatus(400)
+                ->withBody($stream);
+        }
 
         $sql = "CALL nuevoOficinista(:idOficinista, :nombre, :apellido1, :apellido2, :telefono, :celular, :direccion, :correo, :passw);";
         
@@ -55,7 +62,7 @@ class Oficinista {
             $con = $this->container->get('base_datos');
             $query = $con->prepare($sql);
 
-            $passw = $body->idOficinista;
+            $passw = password_hash($body->idOficinista, PASSWORD_DEFAULT);
 
             $query->bindValue(':idOficinista', $body->idOficinista);
             $query->bindValue(':nombre', $body->nombre);
@@ -65,15 +72,12 @@ class Oficinista {
             $query->bindValue(':celular', $body->celular);
             $query->bindValue(':direccion', $body->direccion);
             $query->bindValue(':correo', $body->correo);
-            $query->bindValue(':passw', password_hash($passw, PASSWORD_DEFAULT));
+            $query->bindValue(':passw', $passw);
 
             $query->execute();
-            
-            // Si no hay excepción, asumimos que fue exitoso.
             $status = 201;
 
         } catch(PDOException $e) {
-            // Cualquier error en la base de datos (ej: ID duplicado) resultará en 500.
             $status = 500;
         }
 
@@ -83,13 +87,22 @@ class Oficinista {
         return $response->withStatus($status);
     }
 
-    /**
-     * Actualiza un oficinista existente (Lógica corregida).
-     */
     public function update(Request $request, Response $response, $args) {
-        $body = json_decode($request->getBody());
+        $body = json_decode($request->getBody()->getContents());
 
-        // CORREGIDO: Se usa CALL para invocar el procedimiento.
+        if (!$body || !isset(
+            $body->idOficinista, $body->nombre, $body->apellido1,
+            $body->apellido2, $body->telefono, $body->celular,
+            $body->direccion, $body->correo
+        )) {
+            $stream = new Stream(fopen('php://temp', 'r+'));
+            $stream->write(json_encode(['error' => 'Datos incompletos o mal formateados.']));
+            return $response
+                ->withHeader('Content-Type', 'application/json')
+                ->withStatus(400)
+                ->withBody($stream);
+        }
+
         $sql = "CALL editarOficinista(:id, :idOficinista, :nombre, :apellido1, :apellido2, :telefono, :celular, :direccion, :correo);";
         
         try {
@@ -107,7 +120,7 @@ class Oficinista {
             $query->bindValue(':correo', $body->correo);
 
             $query->execute();
-            $status = $query->rowCount() > 0 ? 200 : 404;
+            $status = 200;
 
         } catch (PDOException $e) {
             $status = 500;
@@ -119,11 +132,7 @@ class Oficinista {
         return $response->withStatus($status);
     }
 
-    /**
-     * Elimina un oficinista y su usuario asociado (Lógica corregida).
-     */
     public function delete(Request $request, Response $response, $args){
-        // CORREGIDO: Se usa CALL para invocar el procedimiento.
         $sql = "CALL eliminarOficinista(:id);";
 
         try {
@@ -132,7 +141,7 @@ class Oficinista {
             $query->bindValue(':id', $args['id'], PDO::PARAM_INT);
             $query->execute();
 
-            $status = $query->rowCount() > 0 ? 200 : 404;
+            $status = 200;
 
         } catch (PDOException $e) {
             $status = 500;
@@ -144,11 +153,7 @@ class Oficinista {
         return $response->withStatus($status);
     }
 
-    /**
-     * Filtra los oficinistas con paginación (Lógica corregida y segura).
-     */
     public function filtrar(Request $request, Response $response, $args){
-        // SEGURO: Se usan placeholders (?) para prevenir inyección SQL.
         $sql = "CALL filtrarOficinistas(?, ?, ?);";
         
         $con = $this->container->get('base_datos');
